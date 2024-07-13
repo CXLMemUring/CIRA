@@ -1,0 +1,3 @@
+[submodule "lib/Polygeist"]
+	path = lib/Polygeist
+	url = https://github.com/llvm/Polygeist
