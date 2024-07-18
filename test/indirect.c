@@ -1,14 +1,16 @@
+#include <stdio.h>
 #include <stdlib.h>
-#define N 1000000
+#define N 100000000
+int a[N];
+int b[N];
 int main() {
-    int a[N];
-    int b[N];
-    int c;
+    int c = 0;
     for (int i = 0; i < N; i++) {
-        a[i] = rand();
-        b[i] = rand();
+        a[i] = rand() % N;
+        b[i] = rand() % N;
     }
     for (int i = 0; i < N; i++) {
         c += a[b[i++]];
     }
+    printf("%d\n", c);
 }
