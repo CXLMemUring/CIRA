@@ -1,28 +1,15 @@
-#include <iostream>
-#include <vector>
-#include <chrono>
-#include <cstdlib>
+#include "lockfreequeue.h"
+#include "test_local.c"
 #include <cstring>
+#include <dlfcn.h>
+#include <iostream>
+#include <numa.h>
 #include <pthread.h>
 #include <sched.h>
+#include <unistd.h>
+#include <x86intrin.h>
 
-constexpr size_t CACHE_LINE_SIZE = 64;
-constexpr size_t NUM_ACCESSES = 1000000;
-constexpr size_t NUM_THREADS = 4;  // Number of threads
-
-// Function to align memory to cache line boundary
-void* aligned_malloc(size_t size, size_t alignment) {
-    void* ptr;
-    if (posix_memalign(&ptr, alignment, size) != 0) {
-        return nullptr;
-    }
-    return ptr;
-}
-
-// Function to free aligned memory
-void aligned_free(void* ptr) {
-    free(ptr);
-}
+LockFreeQueue<SharedData> atomicQueue(M); // local to struct
 
 // Function to set CPU affinity
 void set_cpu_affinity(int cpu) {
@@ -36,72 +23,44 @@ void set_cpu_affinity(int cpu) {
     }
 }
 
-// Structure to pass arguments to threads
-struct ThreadArgs {
-    int* buffer;
-    size_t num_accesses;
-    int cpu;
-};
+// Remote thread function
+void *remote_thread_func(void *arg) {
+    set_cpu_affinity(64);
+    void *handle = dlopen("./libremote.so", RTLD_NOW | RTLD_GLOBAL);
+    printf("handle: %p\n", handle);
+    if (!handle) {
+        exit(-1);
+    }
+    dlerror();
+    int (*remote1)(int, int[], int[]) = (int (*)(int, int[], int[]))dlsym(handle, "remote");
 
-// Thread function to perform ping-pong cacheline test
-void* remote_thread(void* args) {
-    ThreadArgs* threadArgs = static_cast<ThreadArgs*>(args);
-    int* buffer = threadArgs->buffer;
-    size_t num_accesses = threadArgs->num_accesses;
-    int cpu = threadArgs->cpu;
+    for (int i = 0; i < M / 4; i += 1) {
+        while (!atomicQueue[i].valid) {
+            usleep(1);
+        }
+        atomicQueue[i].res = (remote1(atomicQueue[i].i, atomicQueue[i].a, atomicQueue[i].b));
+    }
+    return nullptr;
+}
 
-    // Set CPU affinity for this thread
-    set_cpu_affinity(cpu);
-
-    // dlopen
-
+// Local thread function
+void *local_thread_func(void *arg) {
+    set_cpu_affinity(0);
+    local_func();
     return nullptr;
 }
 
 int main() {
-    size_t num_elements = NUM_ACCESSES * 2;
-    size_t buffer_size = num_elements * sizeof(int);
+    // Allocate shared data structure on NUMA node 1 (remote)
 
-    // Allocate memory aligned to cache line size
-    int* buffer = static_cast<int*>(aligned_malloc(buffer_size, CACHE_LINE_SIZE));
-    if (!buffer) {
-        std::cerr << "Memory allocation failed" << std::endl;
-        return 1;
-    }
+    // Create threads
+    pthread_t remote_thread, local_thread;
+    pthread_create(&remote_thread, nullptr, remote_thread_func, nullptr);
+    pthread_create(&local_thread, nullptr, local_thread_func, nullptr);
 
-    // dlopen
-    // Initialize buffer to ensure it is paged in
-    std::memset(buffer, 0, buffer_size);
+    // Wait for threads to complete
+    pthread_join(remote_thread, nullptr);
+    pthread_join(local_thread, nullptr);
 
-    pthread_t threads[NUM_THREADS];
-    ThreadArgs threadArgs[NUM_THREADS];
-
-    auto start = std::chrono::high_resolution_clock::now();
-
-    // Create threads to perform ping-pong cacheline test
-    for (int i = 0; i < NUM_THREADS; ++i) {
-        threadArgs[i] = { buffer, NUM_ACCESSES / NUM_THREADS, i };
-        if (pthread_create(&threads[i], nullptr, remote_thread, &threadArgs[i]) != 0) {
-            std::cerr << "Error creating thread" << std::endl;
-            aligned_free(buffer);
-            return 1;
-        }
-    }
-
-    // Join threads
-    for (int i = 0; i < NUM_THREADS; ++i) {
-        if (pthread_join(threads[i], nullptr) != 0) {
-            std::cerr << "Error joining thread" << std::endl;
-            aligned_free(buffer);
-            return 1;
-        }
-    }
-
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = end - start;
-
-    std::cout << "Ping-pong cacheline test duration: " << duration.count() << " seconds" << std::endl;
-
-    aligned_free(buffer);
     return 0;
 }

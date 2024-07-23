@@ -11,3 +11,6 @@ CTestTestfile.cmake
 _deps
 .cache
 build
+a.out
+libremote.so
+.vscode
