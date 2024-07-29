@@ -3,6 +3,8 @@
 
 #include <atomic>
 #include <vector>
+#include <coroutine>
+
 using namespace std;
 template<typename T>
 class LockFreeQueue {
@@ -53,4 +55,72 @@ struct SharedData {
     int res;
     bool valid;
 };
+
+struct Task {
+    struct promise_type {
+        Task get_return_object() { 
+            return Task{std::coroutine_handle<promise_type>::from_promise(*this)}; 
+        }
+        std::suspend_never initial_suspend() { return {}; }
+        std::suspend_never final_suspend() noexcept { return {}; }
+        void return_void() {}
+        void unhandled_exception() {}
+    };
+
+    std::coroutine_handle<promise_type> handle;
+    Task(std::coroutine_handle<promise_type> h) : handle(h) {}
+    ~Task() {
+        if (handle) handle.destroy();
+    }
+    Task(const Task&) = delete;
+    Task& operator=(const Task&) = delete;
+    Task(Task&& other) : handle(other.handle) { other.handle = nullptr; }
+    Task& operator=(Task&& other) {
+        if (this != &other) {
+            if (handle) handle.destroy();
+            handle = other.handle;
+            other.handle = nullptr;
+        }
+        return *this;
+    }
+};
+struct remote_result {
+    struct promise_type;
+    using handle_type = std::coroutine_handle<promise_type>;
+
+    struct promise_type {
+        int value;
+        auto get_return_object() { 
+            return remote_result{handle_type::from_promise(*this)}; 
+        }
+        std::suspend_never initial_suspend() { return {}; }
+        std::suspend_always final_suspend() noexcept { return {}; }
+        void return_value(int v) { value = v; }
+        void unhandled_exception() {}
+    };
+
+    handle_type handle;
+    
+    remote_result(handle_type h) : handle(h) {}
+    ~remote_result() {
+        if (handle) handle.destroy();
+    }
+    remote_result(const remote_result&) = delete;
+    remote_result& operator=(const remote_result&) = delete;
+    remote_result(remote_result&& other) : handle(other.handle) { other.handle = nullptr; }
+    remote_result& operator=(remote_result&& other) {
+        if (this != &other) {
+            if (handle) handle.destroy();
+            handle = other.handle;
+            other.handle = nullptr;
+        }
+        return *this;
+    }
+
+    bool done() const { return handle.done(); }
+    void resume() { handle.resume(); }
+    int get_result() const { return handle.promise().value; }
+};
+
+
 #endif // LOCK_FREE_QUEUE_H
