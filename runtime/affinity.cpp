@@ -10,7 +10,7 @@
 #include <x86intrin.h>
 
 LockFreeQueue<SharedData> atomicQueue(M); // local to struct
-int (*remote1)(int, int[], int[]);
+int (*remote1)(int, int[], int[]) ;
 // Function to set CPU affinity
 void set_cpu_affinity(int cpu) {
     cpu_set_t cpuset;
@@ -22,9 +22,9 @@ void set_cpu_affinity(int cpu) {
         exit(1);
     }
 }
-Task process_queue_item(int i) {
-    if (!atomicQueue[i].valid) {
-        co_await std::suspend_always{};
+void process_queue_item(int i) {
+    while (!atomicQueue[i].valid) {
+        std::this_thread::yield();
     }
     atomicQueue[i].res = remote1(atomicQueue[i].i, atomicQueue[i].a, atomicQueue[i].b);
 }
@@ -37,19 +37,15 @@ void *remote_thread_func(void *arg) {
         exit(-1);
     }
     dlerror();
-    remote1 = (int (*)(int, int[], int[]))dlsym(handle, "remote");
+    int (*remote1)(int, int[], int[]) = (int (*)(int, int[], int[]))dlsym(handle, "remote");
 
-    std::vector<Task> futures;
+    std::vector<std::future<void>> futures;
     for (int i = 0; i < M / 4; i += 1) {
-        futures.push_back(process_queue_item(i));
+        futures.push_back(std::async(std::launch::async, process_queue_item, i));
     }
-    for (auto &result : futures) {
-        while (!result.handle.done()) {
-            result.handle.resume();
-            std::this_thread::yield();
-        }
+    for (auto &future : futures) {
+        future.wait();
     }
-
     // for (int i = 0; i < M / 4; i += 1) {
     //     while (!atomicQueue[i].valid) {
     //         usleep(1); // how to make it async?

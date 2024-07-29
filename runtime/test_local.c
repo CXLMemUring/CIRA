@@ -11,13 +11,14 @@ extern LockFreeQueue<SharedData> atomicQueue;
 //     }
 //     return atomicQueue[a].res;
 // };
-
-remote_result remote_async(int a, int b[], int c[]) {
-    atomicQueue.push({a, b, c, 0, true});
-    if (atomicQueue[a].res == 0) {
-        co_await std::suspend_always{};
-    }
-    co_return atomicQueue[a].res;
+std::future<int> remote_async(int a, int b[], int c[]) {
+    return std::async(std::launch::async, [a, b, c]() {
+        atomicQueue.push({a, b, c, 0, true});
+        while (atomicQueue[a].res == 0) {
+            usleep(1);
+        }
+        return atomicQueue[a].res;
+    });
 }
 #define N 100000000
 #define M 100000000
@@ -29,17 +30,13 @@ int local_func() {
         a[i] = rand() % N;
         b[i] = rand() % N;
     }
-    std::vector<remote_result> futures;
+    std::vector<std::future<int>> futures;
     for (int i = 0; i < M - 1; i += 4) {
-        futures.push_back(remote_async(i/4, a, b));
+        futures.push_back(remote_async(i / 4, a, b));
     }
-       for (auto& result : futures) {
-        while (!result.handle.done()) {
-            result.handle.resume();
-            std::this_thread::yield();
-        }
-        c += result.get_result();
-    }
+for (auto& future : futures) {
+    c += future.get();
+}
     printf("c=%d\n", c);
     return 0;
 }
