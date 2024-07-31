@@ -14,13 +14,19 @@ extern LockFreeQueue<SharedData> atomicQueue;
 
 remote_result remote_async(int a, int b[], int c[]) {
     atomicQueue.push({a, b, c, 0, true});
-    if (atomicQueue[a].res == 0) {
+    while (true) {
+        if (atomicQueue[a].valid) {
+            int result = atomicQueue[a].res;
+            if (result != 0) {
+                co_return result;
+            }
+        }
         co_await std::suspend_always{};
     }
-    co_return atomicQueue[a].res;
 }
 #define N 100000000
 #define M 100000000
+#define K 4
 int a[N];
 int b[N];
 int local_func() {
@@ -30,14 +36,18 @@ int local_func() {
         b[i] = rand() % N;
     }
     std::vector<remote_result> futures;
-    for (int i = 0; i < M - 1; i += 4) {
-        futures.push_back(remote_async(i/4, a, b));
+    for (int i = 0; i < M; i += K) {
+        futures.push_back(remote_async(i / K, a, b));
     }
-       for (auto& result : futures) {
+    for (auto &result : futures) {
         while (!result.handle.done()) {
             result.handle.resume();
             std::this_thread::yield();
         }
+
+        // Now it's safe to get the result
+        // auto d = result.get_result();
+        // printf("d=%d\n", d);
         c += result.get_result();
     }
     printf("c=%d\n", c);

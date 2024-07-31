@@ -2,7 +2,7 @@
 #define MLIR_REMOTE_MEM_LOWERING_PASSES_H
 
 #include "mlir/Pass/Pass.h"
-#include "Conversion/MemDisagg.h"
+#include "Conversion/CIRA.h"
 namespace mlir {
 class RewritePatternSet;
 namespace cira {

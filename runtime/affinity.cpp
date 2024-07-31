@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include <x86intrin.h>
 
-LockFreeQueue<SharedData> atomicQueue(M); // local to struct
+LockFreeQueue<SharedData> atomicQueue(M / K); // local to struct
 int (*remote1)(int, int[], int[]);
 // Function to set CPU affinity
 void set_cpu_affinity(int cpu) {
@@ -22,25 +22,37 @@ void set_cpu_affinity(int cpu) {
         exit(1);
     }
 }
-Task process_queue_item(int i) {
-    if (!atomicQueue[i].valid) {
+// Task process_queue_item(int i) {
+//     if (!atomicQueue[i].valid) {
+//         co_await std::suspend_always{};
+//     }
+//     atomicQueue[i].res = remote1(atomicQueue[i].i, atomicQueue[i].a, atomicQueue[i].b);
+// }
+Task process_queue_item(size_t i) {
+    if (i < 0 || i >= atomicQueue.capacity_)
+        co_return;
+
+    if (!atomicQueue[i].valid)
         co_await std::suspend_always{};
-    }
-    atomicQueue[i].res = remote1(atomicQueue[i].i, atomicQueue[i].a, atomicQueue[i].b);
+
+    // Additional check after resuming
+    if (!atomicQueue[i].valid)
+        co_return;
+
+    atomicQueue[i].res = remote1(atomicQueue[i].i * K, atomicQueue[i].a, atomicQueue[i].b);
 }
 // Remote thread function
 void *remote_thread_func(void *arg) {
     set_cpu_affinity(64);
     void *handle = dlopen("./libremote.so", RTLD_NOW | RTLD_GLOBAL);
-    printf("handle: %p\n", handle);
+    // printf("handle: %p\n", handle);
     if (!handle) {
         exit(-1);
     }
     dlerror();
     remote1 = (int (*)(int, int[], int[]))dlsym(handle, "remote");
-
     std::vector<Task> futures;
-    for (int i = 0; i < M / 4; i += 1) {
+    for (size_t i = 0; i < M / K; i += 1) {
         futures.push_back(process_queue_item(i));
     }
     for (auto &result : futures) {
@@ -67,8 +79,6 @@ void *local_thread_func(void *arg) {
 }
 
 int main() {
-    // Allocate shared data structure on NUMA node 1 (remote)
-
     // Create threads
     pthread_t remote_thread, local_thread;
     pthread_create(&remote_thread, nullptr, remote_thread_func, nullptr);
