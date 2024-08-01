@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
   mlir::DialectRegistry registry;
   // mlir::registerAllPasses();
   registerAllDialects(registry); 
-  registry.insert<mlir::rmem::RemoteMemDialect>();
+  registry.insert<mlir::cira::RemoteMemDialect>();
 
   // register remote mem related passes
   mlir::registerDisaggregationConversionPasses();

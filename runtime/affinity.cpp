@@ -53,6 +53,7 @@ void *remote_thread_func(void *arg) {
     remote1 = (int (*)(int, int[], int[]))dlsym(handle, "remote");
     std::vector<Task> futures;
     for (size_t i = 0; i < M / K; i += 1) {
+        usleep(1);
         futures.push_back(process_queue_item(i));
     }
     for (auto &result : futures) {
