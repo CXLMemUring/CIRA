@@ -1,12 +1,13 @@
-add_mlir_conversion_library(MLIRMemDisagg
+add_mlir_conversion_library(MLIRMemUring
   CIRA.cpp
+  SCFCIRAPattern.cpp
 
 
   ADDITIONAL_HEADER_DIRS
   ${PROJECT_SOURCE_DIR}/include
 
   DEPENDS
-  RemoteMemConversionPassIncGen
+  CIRAPassIncGen
 
   LINK_COMPONENTS
   Core

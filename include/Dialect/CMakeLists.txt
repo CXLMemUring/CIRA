@@ -1,0 +1,8 @@
+set(dialect RemoteMem)
+set(dialect_namespace cira)
+set(LLVM_TARGET_DEFINITIONS ${dialect}.td)
+mlir_tablegen(${dialect}.h.inc -gen-op-decls)
+mlir_tablegen(${dialect}.cpp.inc -gen-op-defs)
+add_public_tablegen_target(MLIR${dialect}IncGen)
+add_dependencies(mlir-headers MLIR${dialect}IncGen)
+add_subdirectory(Transforms)

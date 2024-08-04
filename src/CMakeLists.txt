@@ -15,7 +15,7 @@ set(LIBS
   # MLIRRemoteMem
 )
 
-add_llvm_executable(cira_remote driver.cpp)
+add_llvm_executable(cira driver.cpp)
 
-llvm_update_compile_flags(cira_remote)
-target_link_libraries(cira_remote PRIVATE ${LIBS})
+llvm_update_compile_flags(cira)
+target_link_libraries(cira PRIVATE ${LIBS})

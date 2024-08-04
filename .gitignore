@@ -14,3 +14,5 @@ build
 a.out
 libremote.so
 .vscode
+.idea
+cmake-build-debug

@@ -2,13 +2,12 @@
 Can we replace the while loop usleep with couroutine and gain speed up?
 
 ```bash
-…in 🌐 epyc1 in ~/isca25/CIRA/runtime on  main [✘!?] via C v11.4.0-gcc via △ v3.22.1 
+…in 🌐 epyc1 in ~/isca25/CIRA/test on  main [✘!?] via C v11.4.0-gcc via △ v3.22.1 
 ❯ time taskset -c 0 numactl -p 1 ./a.out
-handle: 0x762c7c000b90
-c=-1520289353
+c=193843754
 
 ________________________________________________________
-Executed in   17.00 secs    fish           external
+Executed in   4.00 secs    fish           external
    usr time    3.71 secs    1.09 millis    3.71 secs
    sys time    1.10 secs    0.14 millis    1.10 secs
 
