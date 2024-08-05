@@ -27,7 +27,7 @@ def RemoteMem_Dialect : Dialect {
 // basic block top to remote memory
 
 /* RemoteMemRef Type Definitions */
-def IsRemoteMemRefTypePred : CPred<"$_self.isa<::mlir::rmem::RemoteMemRefType>()">;
+def IsRemoteMemRefTypePred : CPred<"$_self.isa<::mlir::cira::RemoteMemRefType>()">;
 
 class RemoteMemRefOf<list<Type> allowedTypes> :
   ContainerType<

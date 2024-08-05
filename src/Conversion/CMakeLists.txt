@@ -1,4 +1,4 @@
-add_mlir_conversion_library(MLIRMemUring
+add_mlir_conversion_library(CXLMemUring
   CIRA.cpp
   SCFCIRAPattern.cpp
 

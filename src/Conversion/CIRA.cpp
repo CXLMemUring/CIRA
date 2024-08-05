@@ -6,11 +6,13 @@
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/IR/DataLayout.h"
+#include "Dialect/RemoteMem.h"
 
 namespace mlir {
 #define GEN_PASS_DEF_CIRA
@@ -36,9 +38,7 @@ public:
     }
 };
 
-void populateCIRAPatterns(MLIRContext *ctx, RewritePatternSet &patterns) {
-    populateSCFCIRAPatterns(ctx, patterns);
-}
+void populateCIRAPatterns(MLIRContext *ctx, RewritePatternSet &patterns) { populateSCFCIRAPatterns(ctx, patterns); }
 
 std::unique_ptr<Pass> createCIRAPass() { return std::make_unique<CIRAPass>(); }
 

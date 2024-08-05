@@ -6,7 +6,6 @@ get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 set(LIBS
   ${dialect_libs}
   ${conversion_libs}
-  DisaggMLIRUtils
 
   MLIRArithDialect
   MLIROptLib
@@ -16,6 +15,5 @@ set(LIBS
 )
 
 add_llvm_executable(cira driver.cpp)
-
 llvm_update_compile_flags(cira)
 target_link_libraries(cira PRIVATE ${LIBS})

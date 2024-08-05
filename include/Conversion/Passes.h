@@ -3,10 +3,12 @@
 
 #include "mlir/Pass/Pass.h"
 #include "Conversion/CIRA.h"
+#include "Dialect/RemoteMem.h"
+
 namespace mlir {
 class RewritePatternSet;
 namespace cira {
-    
+
 }
 #define GEN_PASS_REGISTRATION
 #include "Conversion/Passes.h.inc"

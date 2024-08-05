@@ -3,10 +3,10 @@
 
 include "mlir/Pass/PassBase.td"
 
-def RMEMDeterminePoolSource : Pass<"rmem-decide-pool", "mlir::ModuleOp"> {
-  let summary = "Choose a cache pool for each remote allocation";
-  let constructor = "mlir::createRemoteMemDPSPass()";
-  let dependentDialects = ["LLVM::LLVMDialect", "rmem::RemoteMemDialect", "func::FuncDialect"];
+def RMEMSearchRemote : Pass<"search-rmem", "ModuleOp"> {
+  let summary = "Mark operation as remote target if hit remote type";
+  let constructor = "mlir::createRemoteMemSearchRemotePass()";
+  let dependentDialects = ["LLVM::LLVMDialect", "rmem::RemoteMemDialect"];
 }
 
 #endif
