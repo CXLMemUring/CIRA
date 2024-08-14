@@ -19,3 +19,6 @@ cmake-build-debug
 mcf.out
 429.mcf*
 Makefile.mips
+*.o
+perf1.data
+perf.data.old
