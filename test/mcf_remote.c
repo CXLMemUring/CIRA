@@ -1,0 +1,37 @@
+typedef long cost_t;
+typedef struct arc arc_t;
+typedef struct node *node_p;
+typedef struct arc *arc_p;
+typedef long flow_t;
+
+struct arc
+{
+  cost_t cost;
+  node_p tail, head;
+  int ident;
+  arc_p nextout, nextin;
+  flow_t flow;
+  cost_t org_cost;
+};
+
+struct node
+{
+  cost_t potential; 
+  int orientation;
+  node_p child;
+  node_p pred;
+  node_p sibling;
+  node_p sibling_prev;     
+  arc_p basic_arc; 
+  arc_p firstout, firstin;
+  arc_p arc_tmp;
+  flow_t flow;
+  long depth; 
+  int number;
+  int time;
+};
+
+cost_t remote(arc_t *arc) {
+    /* red_cost = bea_compute_red_cost( arc ); */
+    return  arc->cost - arc->tail->potential + arc->head->potential;
+}

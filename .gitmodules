@@ -1,3 +1,9 @@
 [submodule "lib/Polygeist"]
 	path = lib/Polygeist
 	url = https://github.com/llvm/Polygeist
+[submodule "bench/DataFrame"]
+	path = bench/DataFrame
+	url = https://github.com/hosseinmoein/DataFrame
+[submodule "bench/gpt2.cpp"]
+	path = bench/gpt2.cpp
+	url = https://github.com/iangitonga/gpt2.cpp.git

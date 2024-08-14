@@ -4,6 +4,9 @@
 #include <atomic>
 #include <coroutine>
 #include <vector>
+#include <queue>
+#include <mutex>
+#include <condition_variable>
 
 using namespace std;
 template <typename T> class LockFreeQueue {
@@ -46,10 +49,57 @@ struct SharedData {
     int i;
     int *a;
     int *b;
-    int res;
-    bool valid;
+};
+#define MAX_KEYS 3
+#define MAX_CHILDREN (MAX_KEYS + 1)
+typedef struct BTreeNode {
+    int keys[MAX_KEYS];
+    struct BTreeNode *children[MAX_CHILDREN];
+    int num_keys;
+    bool is_leaf;
+} BTreeNode;
+
+struct SharedDataBTree {
+    int i;
+    BTreeNode *a;
+};
+struct ResultData{
+    int i;
 };
 
+template<typename T, size_t Size>
+class Channel {
+private:
+    static constexpr size_t BUFFER_MASK = Size - 1;
+    std::array<T, Size> buffer;
+    std::atomic<size_t> head{0};
+    std::atomic<size_t> tail{0};
+
+    // Ensure Size is a power of 2
+    static_assert((Size & (Size - 1)) == 0, "Size must be a power of 2");
+
+public:
+    bool send(const T& item) {
+        size_t current_tail = tail.load(std::memory_order_relaxed);
+        size_t next_tail = (current_tail + 1) & BUFFER_MASK;
+        if (next_tail == head.load(std::memory_order_acquire))
+            return false; // Buffer is full
+        
+        buffer[current_tail] = item;
+        tail.store(next_tail, std::memory_order_release);
+        return true;
+    }
+
+    bool receive(T& item) {
+        size_t current_head = head.load(std::memory_order_relaxed);
+        if (current_head == tail.load(std::memory_order_acquire))
+            return false; // Buffer is empty
+        
+        item = buffer[current_head];
+        head.store((current_head + 1) & BUFFER_MASK, std::memory_order_release);
+        return true;
+    }
+};
 struct Task {
     struct promise_type;
     using handle_type = std::coroutine_handle<promise_type>;

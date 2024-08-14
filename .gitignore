@@ -16,3 +16,6 @@ libremote.so
 .vscode
 .idea
 cmake-build-debug
+mcf.out
+429.mcf*
+Makefile.mips

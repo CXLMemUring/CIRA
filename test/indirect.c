@@ -13,16 +13,16 @@ int main() {
         c += a[b[a[i]]];
         // printf("b[%d]=%d\n", i, a[b[a[i]]]);
     }
-    // printf("c=%d\n",c);
-    // c=0;
-    // for (int d = 0; d < N; d += 4) {
-    //     int res = 0;
-    //     for (int i = d; i < d + 4; i++) {
-    //         // printf("b[%d]=%d\n", a + i, b[d[b[a + i]]]);
-    //         res += a[b[a[i]]];
-    //     }
-    //     c+=res;
-    //     printf("d=%d\n", res);
-    // }
+    printf("c=%d\n",c);
+    c=0;
+    for (int d = 0; d < N; d += 4) {
+        int res = 0;
+        for (int i = d; i < d + 4; i++) {
+            // printf("b[%d]=%d\n", a + i, b[d[b[a + i]]]);
+            res += a[b[a[i]]];
+        }
+        c+=res;
+        printf("d=%d\n", res);
+    }
     printf("%d\n", c);
 }

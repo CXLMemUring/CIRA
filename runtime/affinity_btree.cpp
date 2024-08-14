@@ -10,56 +10,51 @@
 #include <unistd.h>
 #include <x86intrin.h>
 
-Channel<SharedData, 16> data_to;
-Channel<ResultData, 16> data_back;
-// int remote(int a, int b[], int c[]) { // how to make it async?
-//     atomicQueue.push({a, b, c, 0, true});
-//     while (atomicQueue[a].res == 0) {
-//         usleep(1);
-//     }
-//     return atomicQueue[a].res;
-// };
+Channel<SharedDataBTree, 16> data_to;
+Channel<bool, 16> data_back;
+BTreeNode *create_node(bool is_leaf) {
+    BTreeNode *new_node = (BTreeNode *)malloc(sizeof(BTreeNode));
+    new_node->is_leaf = is_leaf;
+    new_node->num_keys = 0;
+    for (int i = 0; i < MAX_CHILDREN; i++) {
+        new_node->children[i] = NULL;
+    }
+    return new_node;
+}
+void print_btree(BTreeNode *node, int level) {
+    if (node == NULL)
+        return;
 
-// remote_result remote_async(int a, int b[], int c[]) {
-//     atomicQueue.push({a, b, c, 0, true});
-//     while (true) {
-//         if (atomicQueue[a].res == 0)
-//             co_await std::suspend_always{};
-
-//         if (atomicQueue[a].res != 0) {
-//             co_return atomicQueue[a].res;
-//         }
-//     }
-// }
-#define N 100
-#define M 100
-#define K 4
-remote_result remote_async(int a, int b[], int c[]) {
+    for (int i = node->num_keys - 1; i >= 0; i--) {
+        print_btree(node->children[i + 1], level + 1);
+        for (int j = 0; j < level; j++)
+            printf("    ");
+        printf("%d\n", node->keys[i]);
+    }
+    print_btree(node->children[0], level + 1);
+}
+Task remote_async(int a, BTreeNode *b) {
     while (true) {
-        SharedData data = {a * K, b, c};
+        SharedDataBTree data = {a, b};
         while (!data_to.send(data)) {
             co_await std::suspend_always{};
         };
-        ResultData back;
-        while (!data_back.receive(back)) {
+        bool data_;
+        while (!data_back.receive(data_)) {
             co_await std::suspend_always{};
         };
-        co_return back.i;
     }
 }
+#define N 100000000
+#define M 100000000
+#define K 100
 
-int a[N];
-int b[N];
 int local_func() {
-    int c = 0;
     auto start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < N; i++) {
-        a[i] = i;
-        b[i] = i;
-    }
-    std::vector<remote_result> futures;
+    BTreeNode *root = create_node(true);
+    std::vector<Task> futures;
     for (int i = 0; i < M; i += K) {
-        futures.push_back(remote_async(i / K, a, b));
+        futures.push_back(remote_async(i, root));
     }
     for (auto &result : futures) {
         while (!result.handle.done()) {
@@ -68,11 +63,9 @@ int local_func() {
         }
 
         // Now it's safe to get the result
-        auto d = result.get_result();
-        printf("d=%d\n", d);
-        c += result.get_result();
+        // auto d = result.get_result();
+        // printf("d=%d\n", d);
     }
-    printf("c=%d\n", c);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -81,7 +74,7 @@ int local_func() {
 
     return 0;
 }
-int (*remote1)(int, int[], int[]);
+void (*remote1)(BTreeNode **root, int key);
 // Function to set CPU affinity
 void set_cpu_affinity(int cpu) {
     cpu_set_t cpuset;
@@ -99,31 +92,33 @@ void set_cpu_affinity(int cpu) {
 //     }
 //     atomicQueue[i].res = remote1(atomicQueue[i].i, atomicQueue[i].a, atomicQueue[i].b);
 // }
-Task process_queue_item(size_t i) {
+Task process_queue_item() {
     while (true) {
-        SharedData shared;
+        SharedDataBTree shared;
         while (!data_to.receive(shared)) {
             co_await std::suspend_always{};
         };
-        ResultData return_data = {remote1(shared.i, shared.a, shared.b)};
-        while (!data_back.send(return_data)) {
+        remote1(&shared.a, shared.i);
+        while (!data_back.send(true)) {
             co_await std::suspend_always{};
-        }
+        };
+        co_return;
     }
 }
 // Remote thread function
 void *remote_thread_func(void *arg) {
     set_cpu_affinity(64);
     void *handle = dlopen("./libremote.so", RTLD_NOW | RTLD_GLOBAL);
-    // printf("handle: %p\n", handle);
+    printf("handle: %p\n", handle);
     if (!handle) {
         exit(-1);
     }
-    dlerror();
-    remote1 = (int (*)(int, int[], int[]))dlsym(handle, "remote");
+    // printf("error: %s",dlerror());
+    // dlerror();
+    remote1 = (void (*)(BTreeNode **, int))dlsym(handle, "insert");
     std::vector<Task> futures;
     for (size_t i = 0; i < M / K; i += 1) {
-        futures.push_back(process_queue_item(i));
+        futures.push_back(process_queue_item());
     }
     for (auto &result : futures) {
         while (!result.handle.done()) {
