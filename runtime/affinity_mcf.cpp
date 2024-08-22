@@ -34,9 +34,9 @@ Channel<ResultData, 16> data_back;
 #define N 100
 #define M 100
 #define K 4
-remote_result remote_async(int a, int b[], int c[]) {
+remote_result remote_async(long) {
     while (true) {
-        SharedData data = {a * K, b, c};
+        SharedData data = {arc};
         while (!data_to.send(data)) {
             co_await std::suspend_always{};
         };
@@ -93,12 +93,6 @@ void set_cpu_affinity(int cpu) {
         exit(1);
     }
 }
-// Task process_queue_item(int i) {
-//     if (!atomicQueue[i].valid) {
-//         co_await std::suspend_always{};
-//     }
-//     atomicQueue[i].res = remote1(atomicQueue[i].i, atomicQueue[i].a, atomicQueue[i].b);
-// }
 Task process_queue_item(size_t i) {
     while (true) {
         SharedData shared;
