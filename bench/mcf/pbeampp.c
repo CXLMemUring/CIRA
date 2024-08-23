@@ -27,6 +27,7 @@ Copyright (c) 2003-2005 Andreas Loebel.
 
 #include "pbeampp.h"
 
+cost_t remote(arc_t *arc);
 
 #ifdef _PROTO_
 int bea_is_dual_infeasible( arc_t *arc, cost_t red_cost )
@@ -161,18 +162,19 @@ NEXT:
     arc = arcs + group_pos;
     for( ; arc < stop_arcs; arc += nr_group )
     {
-        if( arc->ident > BASIC )
-        {
-            /* red_cost = bea_compute_red_cost( arc ); */
-            red_cost = arc->cost - arc->tail->potential + arc->head->potential;
-            if( bea_is_dual_infeasible( arc, red_cost ) )
-            {
-                basket_size++;
-                perm[basket_size]->a = arc;
-                perm[basket_size]->cost = red_cost;
+        // if( arc->ident > BASIC )
+        // {
+        //     /* red_cost = bea_compute_red_cost( arc ); */
+        //     red_cost = remote(arc);
+        //     if( bea_is_dual_infeasible( arc, red_cost ) )
+        //     {
+        //         basket_size++;
+        //         perm[basket_size]->a = arc;
+        //         perm[basket_size]->cost = red_cost;
                 perm[basket_size]->abs_cost = ABS(red_cost);
-            }
-        }
+        //     }
+        // }
+        red_cost = remote(arc, &basket);
         
     }
 

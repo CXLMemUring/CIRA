@@ -9,6 +9,7 @@
 #include <thread>
 #include <unistd.h>
 #include <x86intrin.h>
+#include "../test/mcf_remote.h"
 
 Channel<SharedData, 16> data_to;
 Channel<ResultData, 16> data_back;
