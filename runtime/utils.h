@@ -1,13 +1,13 @@
 #ifndef LOCK_FREE_QUEUE_H
 #define LOCK_FREE_QUEUE_H
 
+#include "../test/mcf_remote.h"
 #include <atomic>
-#include <coroutine>
-#include <vector>
-#include <queue>
-#include <mutex>
 #include <condition_variable>
-
+#include <coroutine>
+#include <mutex>
+#include <queue>
+#include <vector>
 using namespace std;
 template <typename T> class LockFreeQueue {
 public:
@@ -63,12 +63,19 @@ struct SharedDataBTree {
     int i;
     BTreeNode *a;
 };
-struct ResultData{
+struct SharedDataMCF {
+    arc_t *arc;
+    long *basket_size;
+    basket *perm[];
+};
+struct ResultData {
     int i;
 };
+struct ResultDataMCF {
+    cost_t i;
+};
 
-template<typename T, size_t Size>
-class Channel {
+template <typename T, size_t Size> class Channel {
 private:
     static constexpr size_t BUFFER_MASK = Size - 1;
     std::array<T, Size> buffer;
@@ -79,22 +86,22 @@ private:
     static_assert((Size & (Size - 1)) == 0, "Size must be a power of 2");
 
 public:
-    bool send(const T& item) {
+    bool send(const T &item) {
         size_t current_tail = tail.load(std::memory_order_relaxed);
         size_t next_tail = (current_tail + 1) & BUFFER_MASK;
         if (next_tail == head.load(std::memory_order_acquire))
             return false; // Buffer is full
-        
+
         buffer[current_tail] = item;
         tail.store(next_tail, std::memory_order_release);
         return true;
     }
 
-    bool receive(T& item) {
+    bool receive(T &item) {
         size_t current_head = head.load(std::memory_order_relaxed);
         if (current_head == tail.load(std::memory_order_acquire))
             return false; // Buffer is empty
-        
+
         item = buffer[current_head];
         head.store((current_head + 1) & BUFFER_MASK, std::memory_order_release);
         return true;

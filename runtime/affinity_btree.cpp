@@ -41,8 +41,9 @@ Task remote_async(int a, BTreeNode *b) {
         };
         bool data_;
         while (!data_back.receive(data_)) {
-            co_await std::suspend_always{};
+            co_return;
         };
+        co_return;
     }
 }
 #define N 100000000
@@ -66,6 +67,8 @@ int local_func() {
         // auto d = result.get_result();
         // printf("d=%d\n", d);
     }
+    // print_btree(root, 0);
+    // usleep(1000);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -100,7 +103,7 @@ Task process_queue_item() {
         };
         remote1(&shared.a, shared.i);
         while (!data_back.send(true)) {
-            co_await std::suspend_always{};
+            co_return;
         };
         co_return;
     }

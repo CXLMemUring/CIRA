@@ -1,3 +1,4 @@
+#include "../test/mcf_remote.h"
 #include "utils.h"
 #include <chrono>
 #include <cstring>
@@ -9,10 +10,9 @@
 #include <thread>
 #include <unistd.h>
 #include <x86intrin.h>
-#include "../test/mcf_remote.h"
 
-Channel<SharedData, 16> data_to;
-Channel<ResultData, 16> data_back;
+Channel<SharedDataMCF, 16> data_to;
+Channel<ResultDataMCF, 16> data_back;
 // int remote(int a, int b[], int c[]) { // how to make it async?
 //     atomicQueue.push({a, b, c, 0, true});
 //     while (atomicQueue[a].res == 0) {
@@ -35,45 +35,35 @@ Channel<ResultData, 16> data_back;
 #define N 100
 #define M 100
 #define K 4
-remote_result remote_async(long) {
+remote_result remote_async(arc_t *arc, long *basket_size, BASKET *perm[]) {
     while (true) {
-        SharedData data = {arc};
+        SharedDataMCF data = {arc};
         while (!data_to.send(data)) {
             co_await std::suspend_always{};
         };
-        ResultData back;
+        ResultDataMCF back;
         while (!data_back.receive(back)) {
             co_await std::suspend_always{};
         };
         co_return back.i;
     }
 }
-
-int a[N];
-int b[N];
 int local_func() {
-    int c = 0;
-    auto start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < N; i++) {
-        a[i] = i;
-        b[i] = i;
+    void *handle = dlopen(NULL, RTLD_LAZY); // Get handle to the current process
+    if (handle == NULL) {
+        fprintf(stderr, "dlopen failed: %s\n", dlerror());
+        return 1;
     }
-    std::vector<remote_result> futures;
-    for (int i = 0; i < M; i += K) {
-        futures.push_back(remote_async(i / K, a, b));
-    }
-    for (auto &result : futures) {
-        while (!result.handle.done()) {
-            result.handle.resume();
-            std::this_thread::yield();
-        }
 
-        // Now it's safe to get the result
-        auto d = result.get_result();
-        printf("d=%d\n", d);
-        c += result.get_result();
+    int (*main_ptr)(int, char**) = dlsym(handle, "main");
+    if (main_ptr == NULL) {
+        fprintf(stderr, "dlsym failed: %s\n", dlerror());
+        dlclose(handle);
+        return 1;
     }
-    printf("c=%d\n", c);
+    printf("Address of main: %p\n", main_ptr);
+    auto start = std::chrono::high_resolution_clock::now();
+    main_ptr(0, NULL);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -82,7 +72,7 @@ int local_func() {
 
     return 0;
 }
-int (*remote1)(int, int[], int[]);
+cost_t (*remote1)(arc_t *arc, long *basket_size, BASKET *perm[]);
 // Function to set CPU affinity
 void set_cpu_affinity(int cpu) {
     cpu_set_t cpuset;
@@ -96,11 +86,11 @@ void set_cpu_affinity(int cpu) {
 }
 Task process_queue_item(size_t i) {
     while (true) {
-        SharedData shared;
+        SharedDataMCF shared;
         while (!data_to.receive(shared)) {
             co_await std::suspend_always{};
         };
-        ResultData return_data = {remote1(shared.i, shared.a, shared.b)};
+        ResultDataMCF return_data = {remote1(shared.arc, shared.basket_size, shared.perm)};
         while (!data_back.send(return_data)) {
             co_await std::suspend_always{};
         }
@@ -115,7 +105,7 @@ void *remote_thread_func(void *arg) {
         exit(-1);
     }
     dlerror();
-    remote1 = (int (*)(int, int[], int[]))dlsym(handle, "remote");
+    remote1 = (cost_t(*)(arc_t * arc, long *basket_size, basket *perm[])) dlsym(handle, "remote");
     std::vector<Task> futures;
     for (size_t i = 0; i < M / K; i += 1) {
         futures.push_back(process_queue_item(i));

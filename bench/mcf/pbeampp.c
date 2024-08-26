@@ -27,7 +27,7 @@ Copyright (c) 2003-2005 Andreas Loebel.
 
 #include "pbeampp.h"
 
-cost_t remote(arc_t *arc);
+cost_t remote(arc_t *arc, long *basket_size, basket *perm[]);
 
 #ifdef _PROTO_
 int bea_is_dual_infeasible( arc_t *arc, cost_t red_cost )
@@ -171,10 +171,10 @@ NEXT:
         //         basket_size++;
         //         perm[basket_size]->a = arc;
         //         perm[basket_size]->cost = red_cost;
-                perm[basket_size]->abs_cost = ABS(red_cost);
+        //         perm[basket_size]->abs_cost = ABS(red_cost);
         //     }
         // }
-        red_cost = remote(arc, &basket);
+        red_cost = remote(arc, &basket_size, perm);
         
     }
 

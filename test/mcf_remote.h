@@ -1,3 +1,5 @@
+#ifndef MCF_REMOTE_H
+#define MCF_REMOTE_H
 typedef long cost_t;
 typedef struct arc arc_t;
 typedef struct node *node_p;
@@ -34,3 +36,5 @@ typedef struct basket {
     cost_t abs_cost;
 } BASKET;
 #define ABS(x) (((x) >= 0) ? (x) : -(x))
+
+#endif

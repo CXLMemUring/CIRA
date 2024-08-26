@@ -1,9 +1,11 @@
 #include "mcf_remote.h"
+int counter;
+extern "C" {
 int bea_is_dual_infeasible(arc_t *arc, cost_t red_cost) {
     return ((red_cost < 0 && arc->ident == 1) || (red_cost > 0 && arc->ident == 2));
 }
 
-cost_t remote(arc_t *arc, long *basket_size, basket *perm[]) {
+cost_t remote(arc_t *arc, long *basket_size, BASKET *perm[]) {
     /* red_cost = bea_compute_red_cost( arc ); */
     cost_t red_cost = 0;
     if (arc->ident > 0) {
@@ -17,4 +19,9 @@ cost_t remote(arc_t *arc, long *basket_size, basket *perm[]) {
         }
     }
     return red_cost;
+}
+}
+cost_t remote_async(arc_t *arc, long *basket_size, BASKET *perm[]) { 
+    
+    return;
 }

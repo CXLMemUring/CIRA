@@ -67,7 +67,7 @@ void insert_non_full(BTreeNode *node, int key) {
     }
 }
 void insert(BTreeNode **root, int key) {
-    for (int i = key; i < key + 100; i++)
+    for (int i = key; i < key + 1; i++)
         if ((*root)->num_keys == MAX_KEYS) {
             BTreeNode *new_root = create_node(false);
             new_root->children[0] = *root;
@@ -76,4 +76,5 @@ void insert(BTreeNode **root, int key) {
         } else {
             insert_non_full(*root, i);
         }
+    // printf("Inserted %d\n", key);
 }

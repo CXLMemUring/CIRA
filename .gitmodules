@@ -7,3 +7,6 @@
 [submodule "bench/gpt2.cpp"]
 	path = bench/gpt2.cpp
 	url = https://github.com/iangitonga/gpt2.cpp.git
+[submodule "bench/gapbs"]
+	path = bench/gapbs
+	url = https://github.com/sbeamer/gapbs
