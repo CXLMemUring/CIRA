@@ -66,7 +66,7 @@ struct SharedDataBTree {
 struct SharedDataMCF {
     arc_t *arc;
     long *basket_size;
-    basket *perm[];
+    BASKET **perm;
 };
 struct ResultData {
     int i;

@@ -112,17 +112,8 @@ long global_opt( )
 
 
 
-
-#ifdef _PROTO_
-int main( int argc, char *argv[] )
-#else
-int main( argc, argv )
-    int argc;
-    char *argv[];
-#endif
+int main_ptr()
 {
-    if( argc < 2 )
-        return -1;
 
     printf( "\nMCF SPEC CPU2006 version 1.10\n" );
     printf( "Copyright (c) 1998-2000 Zuse Institut Berlin (ZIB)\n" );
@@ -133,7 +124,7 @@ int main( argc, argv )
     memset( (void *)(&net), 0, (size_t)sizeof(network_t) );
     net.bigM = (long)BIGM;
 
-    strcpy( net.inputfile, argv[1] );
+    strcpy( net.inputfile, "/home/yangyw/isca25/CIRA/bench/mcf/data/train/input/inp.in" );
     
     if( read_min( &net ) )
     {

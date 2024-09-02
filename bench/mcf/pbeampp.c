@@ -27,7 +27,6 @@ Copyright (c) 2003-2005 Andreas Loebel.
 
 #include "pbeampp.h"
 
-cost_t remote(arc_t *arc, long *basket_size, basket *perm[]);
 
 #ifdef _PROTO_
 int bea_is_dual_infeasible( arc_t *arc, cost_t red_cost )
@@ -59,6 +58,7 @@ static BASKET basket[B+K+1];
 static BASKET *perm[B+K+1];
 
 
+void remote(arc_t *arc, long *basket_size, BASKET *perm[]);
 
 #ifdef _PROTO_
 void sort_basket( long min, long max )
@@ -174,7 +174,7 @@ NEXT:
         //         perm[basket_size]->abs_cost = ABS(red_cost);
         //     }
         // }
-        red_cost = remote(arc, &basket_size, perm);
+        remote(arc, &basket_size, perm);
         
     }
 
