@@ -10,3 +10,6 @@
 [submodule "bench/gapbs"]
 	path = bench/gapbs
 	url = https://github.com/sbeamer/gapbs
+[submodule "bench/MonetDB"]
+	path = bench/MonetDB
+	url = https://github.com/MonetDB/MonetDB

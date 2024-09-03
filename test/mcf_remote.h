@@ -36,5 +36,7 @@ typedef struct basket {
     cost_t abs_cost;
 } BASKET;
 #define ABS(x) (((x) >= 0) ? (x) : -(x))
-
+extern "C" {
+int main_ptr();
+}
 #endif
