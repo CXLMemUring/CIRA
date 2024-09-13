@@ -18,7 +18,7 @@ std::vector<remote_result> futures;
 int counter = 0;
 
 #define M 204416
-#define K 100
+#define K 1
 remote_result remote_async(arc_t *arc, long *basket_size, BASKET **perm) {
     while (true) {
         SharedDataMCF data = {arc, basket_size, perm};
@@ -46,7 +46,8 @@ void remote(arc_t *arc, long *basket_size, BASKET *perm[]) {
             }
         }
         futures.clear();
-   
+        //   printf("counter: %d\n", counter);
+
     }
 }
 }

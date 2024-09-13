@@ -165,7 +165,7 @@ NEXT:
         // if( arc->ident > BASIC )
         // {
         //     /* red_cost = bea_compute_red_cost( arc ); */
-        //     red_cost = remote(arc);
+        //     red_cost = arc->cost - arc->tail->potential + arc->head->potential;
         //     if( bea_is_dual_infeasible( arc, red_cost ) )
         //     {
         //         basket_size++;
