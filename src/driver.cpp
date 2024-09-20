@@ -13,15 +13,15 @@
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/raw_ostream.h"
-// #include "Dialect/Transforms/Passes.h"
+#include "Dialect/Transforms/Passes.h"
 #include "mlir/InitAllPasses.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 #include "Conversion/Passes.h"
 #include "Dialect/RemoteMem.h"
-// #include "Lowering/Passes.h"
-// #include "Utils/Passes.h"
+#include "Lowering/Passes.h"
+//#include "Utils/Passes.h"
 
 using namespace mlir;
 
@@ -36,9 +36,9 @@ int main(int argc, char **argv) {
     registry.insert<mlir::cira::RemoteMemDialect>();
 
     // register remote mem related passes
-    //  mlir::registerDisaggregationConversionPasses();
-    // mlir::registerRemoteMemLoweringPasses();
-    // mlir::registerRemoteMemPasses();
+    mlir::registerCIRAConversionPasses();
+    mlir::registerCIRALoweringPasses();
+    mlir::registerRemoteMemPasses();
 
     // register normal passes
     mlir::registerAllPasses();

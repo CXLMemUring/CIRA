@@ -1,4 +1,5 @@
 #include "Conversion/CIRA.h"
+#include "Dialect/RemoteMem.h"
 #include "mlir/Analysis/DataLayoutAnalysis.h"
 #include "mlir/Conversion/LLVMCommon/Pattern.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -12,7 +13,6 @@
 #include "mlir/Transforms/DialectConversion.h"
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/IR/DataLayout.h"
-#include "Dialect/RemoteMem.h"
 
 namespace mlir {
 #define GEN_PASS_DEF_CIRA

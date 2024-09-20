@@ -1,6 +1,6 @@
 add_mlir_conversion_library(MLIREmitLLVM
-        LoweringLocal.cpp
-        LoweringRemote.cpp
+        EmitLLVM.cpp
+        RemoteMemToLLVM.cpp
 
         ADDITIONAL_HEADER_DIRS
         ${PROJECT_SOURCE_DIR}/include
