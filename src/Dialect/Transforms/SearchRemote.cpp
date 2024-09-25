@@ -1,21 +1,25 @@
 //
 // Created by yangyw on 8/5/24.
 //
-#include "Dialect/Transforms/Passes.h"
-#include "mlir/Dialect/MemRef/IR/MemRef.h"
-#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "Dialect/RemoteMem.h"
+#include "Dialect/Transforms/Passes.h"
+#include "Dialect/WorkloadAnalysis.h"
+
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/Pass/Pass.h"
-#include "llvm/Support/TypeName.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include <set>
 #include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/TypeSwitch.h"
+#include "llvm/Support/TypeName.h"
 #include "llvm/Support/TypeSize.h"
+
+#include <mlir/IR/BlockAndValueMapping.h>
+#include <set>
 
 namespace mlir {
 #define GEN_PASS_DEF_RMEMSEARCHREMOTE
@@ -26,124 +30,120 @@ using namespace mlir;
 
 namespace {
 
-static inline std::pair<bool, Type> hasTargetTypeImpl(Type t, SetVector<Type> &callStack, DictionaryAttr &rule) {
-    if (callStack.contains(t))
-        return {false, t};
-    callStack.insert(t);
-    auto stackGurard = llvm::make_scope_exit([&] { callStack.pop_back(); });
-    auto hasTargetTypeHandler = [&](Type type) {
-        return hasTargetTypeImpl(type, callStack, rule);
-    };
-    return llvm::TypeSwitch<Type, std::pair<bool, Type>>(t)
-        .Case<LLVM::LLVMStructType>([&](LLVM::LLVMStructType ST) -> std::pair<bool, Type> {
-            if (ST.isIdentified()) {
-                if (auto find = rule.get(ST.getName()))
-                    return { ST.getName() == "struct.arc", find.cast<TypeAttr>().getValue()};
-                // TODO: nested struct
-            }
-            return {false, ST};
-        })
-        .Case<LLVM::LLVMArrayType>([&](LLVM::LLVMArrayType aryType) -> std::pair<bool, Type> {
-            auto ET = hasTargetTypeHandler(aryType.getElementType());
-            if (ET.first) {
-                llvm::errs() << "Cannot handle array of rmem target type\n";
-            }
-            return { false, LLVM::LLVMArrayType::get(ET.second, aryType.getNumElements()) };
-        })
-        .Case<LLVM::LLVMPointerType>([&](LLVM::LLVMPointerType PT) -> std::pair<bool, Type> {
-            if (PT.isOpaque())
-                return { false, PT };
-            auto ET = hasTargetTypeHandler(PT.getElementType());
-            auto LET = LLVM::LLVMPointerType::get(ET.second, PT.getAddressSpace());
-            if (ET.first)
-                return { false, cira::RemoteMemRefType::get(LET, 1) };
-            return { false, LET };
-        })
-        .Default([](Type t) -> std::pair<bool, Type> { return {false, t} ; });
-}
-
-static inline Type hasTarget(Type t, DictionaryAttr &rule) {
-    SetVector<Type> callStack;
-    return hasTargetTypeImpl(t, callStack, rule).second;
-}
-
 class RMEMSearchRemotePass : public impl::RMEMSearchRemoteBase<RMEMSearchRemotePass> {
+    std::set<Operation *> addrPathDFS(Operation *op, scf::ForOp loop) {
+        std::set<Operation *> search;
+        for (OpOperand &opd : op->getOpOperands()) {
+            if (opd.get() == loop.getInductionVar())
+                search.insert(op);
+            else {
+                Operation *def = opd.get().getDefiningOp();
+                if (def && def->getBlock() == loop.getBody()) {
+                    auto dfs = addrPathDFS(def, loop);
+                    if (dfs.size()) {
+                        dfs.insert(op);
+                        search.merge(dfs);
+                    }
+                }
+            }
+        }
+        return search;
+    }
+
+    llvm::SetVector<mlir::Value> analyzeValueUses(mlir::scf::ForOp forOp) {
+        llvm::SetVector<mlir::Value> capturedValues;
+        mlir::Region& loopBody = forOp.getRegion();
+
+        forOp.walk([&](mlir::Operation *op) {
+            for (mlir::Value operand : op->getOperands()) {
+                mlir::Operation* definingOp = operand.getDefiningOp();
+
+                // Check if the operand is defined outside the loop
+                // and is not a result of an operation within the loop
+                if (!loopBody.isAncestor(operand.getParentRegion()) &&
+                    (definingOp == nullptr || !loopBody.isAncestor(definingOp->getParentRegion()))) {
+                    capturedValues.insert(operand);
+                }
+            }
+        });
+
+        // Remove loop induction variable and loop-defined values from captured values
+        capturedValues.remove(forOp.getInductionVar());
+        for (mlir::Value arg : forOp.getRegionIterArgs()) {
+            capturedValues.remove(arg);
+        }
+
+        return capturedValues;
+    }
+
+    mlir::func::FuncOp extractLoopBody(mlir::scf::ForOp forOp, const llvm::SetVector<mlir::Value> &capturedValues,
+                                       mlir::OpBuilder &builder) {
+        mlir::Block *body = forOp.getBody();
+
+        // Prepare function type
+        llvm::SmallVector<mlir::Type, 4> argTypes;
+        argTypes.push_back(forOp.getInductionVar().getType()); // Induction variable
+        for (mlir::Value val : capturedValues) {
+            argTypes.push_back(val.getType());
+        }
+        auto funcType = builder.getFunctionType(argTypes, {});
+
+        auto remoteFunc = builder.create<mlir::func::FuncOp>(forOp.getLoc(), "remote_loop_body", funcType);
+
+        auto remoteBlock = remoteFunc.addEntryBlock();
+        builder.setInsertionPointToStart(remoteBlock);
+
+        // Create a mapping from old values to new function arguments
+        mlir::BlockAndValueMapping mapping;
+        mapping.map(forOp.getInductionVar(), remoteBlock->getArgument(0));
+        for (size_t i = 0; i < capturedValues.size(); ++i) {
+            mapping.map(capturedValues[i], remoteBlock->getArgument(i + 1));
+        }
+
+        // Clone loop body operations, remapping the values
+        for (auto &op : body->getOperations()) {
+            if (!mlir::isa<mlir::scf::YieldOp>(op)) {
+                builder.clone(op, mapping);
+            }
+        }
+
+        builder.create<mlir::func::ReturnOp>(forOp.getLoc());
+        return remoteFunc;
+    }
+
+    void replaceWithRemoteCall(mlir::scf::ForOp forOp, mlir::func::FuncOp remoteFunc,
+                               const llvm::SetVector<mlir::Value> &capturedValues, mlir::OpBuilder &builder) {
+        builder.setInsertionPoint(forOp);
+
+        llvm::SmallVector<mlir::Value, 4> callOperands;
+        callOperands.push_back(forOp.getInductionVar());
+        callOperands.append(capturedValues.begin(), capturedValues.end());
+
+        auto call = builder.create<mlir::func::CallOp>(forOp.getLoc(), remoteFunc, callOperands);
+        //  forOp.erase();
+    }
     void runOnOperation() override {
         ModuleOp mop = getOperation();
-        OpBuilder b(mop);
-
-        // SmallVector<NamedAttribute, 4> mappings;
-        // mappings.emplace_back(b.getStringAttr("struct.node"), TypeAttr::get(b.getI1Type()));
-        // mop->setAttr("rmem.type_rule", b.getDictionaryAttr(mappings));
-
-        DictionaryAttr rule = mop->getAttrOfType<DictionaryAttr>("rmem.type_rule");
-        // rule.dump();
-
-        // Set attr of all users of current op
-        // users should check operand and decide how to convert
-        // this is different from "remote_target" that op does not have to
-        // convert
-        auto notifyRemoteUsers([&](Operation *op){
-            for (Value rel : op->getResults()) {
-                if (rel.use_empty()) continue;
-                for (Operation *user : rel.getUsers()) {
-                    user->setAttr("remote_check_use", b.getI8IntegerAttr(1));
-                }
+        mlir::OpBuilder builder(mop.getContext());
+        WorkloadComplexityAnalyzer analyzer{};
+        auto dfsComplexity = [&](const std::set<Operation *> &dfs) {
+            unsigned c = 0;
+            for (auto const &op : dfs) {
+                c += analyzer.visitOperation(op);
+                if (c >= WorkloadComplexityAnalyzer::uncertain)
+                    return WorkloadComplexityAnalyzer::uncertain;
             }
-        });
-
-        // if result contains invalid type, must convert current op
-        // also set rel_types for current op, but op will decide whether to follow this
-        auto checkResultTypes([&](Operation *op, bool &isMarked, SmallVectorImpl<Type> &retTypes){
-            for (Type r : op->getResultTypes()) {
-                Type ifTargeted = hasTarget(r, rule);
-                retTypes.emplace_back(ifTargeted);
-                if (r != ifTargeted) {
-                    // mark remote target
-                    op->setAttr("remote_target", b.getI8IntegerAttr(1));
-                    isMarked = true;
-                }
+            return c;
+        };
+        mop.walk([&](mlir::scf::ForOp forOp) {
+            if (dfsComplexity(addrPathDFS(forOp, forOp)) < 100) {
+                llvm::SetVector<mlir::Value> capturedValues = analyzeValueUses(forOp);
+                mlir::func::FuncOp remoteFunc = extractLoopBody(forOp, capturedValues, builder);
+                replaceWithRemoteCall(forOp, remoteFunc, capturedValues, builder);
             }
-        });
-
-        auto checkOperandTypes([&](Operation *op, bool &isMarked){
-            for (Type t : op->getOperandTypes()) {
-                if (hasTarget(t, rule) != t) {
-                    // mark remote target
-                    op->setAttr("remote_target", b.getI8IntegerAttr(1));
-                    isMarked = true;
-                    break;
-                }
-            }
-        });
-
-        mop->walk([&](Operation *op) {
-
-            bool isMarked = false;
-            SmallVector<Type, 4> retTypes;
-
-            checkResultTypes(op, isMarked, retTypes);
-
-            // prevent hand-written "rel_types" conflict
-            if (isMarked && (op->getAttr("rel_types") == nullptr))
-                op->setAttr("rel_types", b.getTypeArrayAttr(retTypes));
-            else
-                checkOperandTypes(op, isMarked);
-
-            // notify users
-            // This mechanism makes sure that implicit result type changes will
-            // be acknowledged by its users e.g.
-            // %1 = gep ptr<struct<(i32, i32)>>[0, 1] -> ptr<i32>
-            // load/store %1 ...
-            if (isMarked)
-                notifyRemoteUsers(op);
-
-            return WalkResult::advance();
         });
     }
 };
-}
+} // namespace
 
-std::unique_ptr<Pass> mlir::createRemoteMemSearchRemotePass() {
-    return std::make_unique<RMEMSearchRemotePass>();
-}
+std::unique_ptr<Pass> mlir::createRemoteMemSearchRemotePass() { return std::make_unique<RMEMSearchRemotePass>(); }

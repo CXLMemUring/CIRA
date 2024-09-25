@@ -8,7 +8,7 @@ include "mlir/IR/AttrTypeBase.td"
 include "mlir/IR/BuiltinDialect.td"
 include "mlir/IR/BuiltinTypeInterfaces.td"
 include "mlir/Dialect/LLVMIR/LLVMOpBase.td"
-include "mlir/Dialect/LLVMIR/LLVMInterfaces.td"
+// include "mlir/Dialect/LLVMIR/LLVMInterfaces.td"
 
 def RemoteMem_Dialect : Dialect {
   let name = "cira";

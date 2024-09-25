@@ -74,7 +74,7 @@ class SCFForOpDisagg : public OpConversionPattern<scf::ForOp> {
                                                     adaptor.getStep(), adaptor.getInitArgs());
         // forop builder will create block while building the region
         // delete it before moving original block into the new loop body
-        newForOp.getBody()->erase();
+        // newForOp.getBody()->erase();
         rewriter.inlineRegionBefore(op.getBodyRegion(), newForOp.getBodyRegion(), newForOp.getBodyRegion().end());
         rewriter.applySignatureConversion(&newForOp.getBodyRegion(), result);
         rewriter.replaceOp(op, newForOp.getResults());
@@ -96,6 +96,7 @@ class SCFIfOpDisagg : public OpConversionPattern<scf::IfOp> {
         }
 
         auto newIf = rewriter.create<scf::IfOp>(op.getLoc(), relTypes, adaptor.getCondition(), true);
+//        op->setAttr("remotable", IntegerAttr::get(IntegerType::get(getContext(), 32), 1));
         rewriter.eraseBlock(&newIf.getThenRegion().front());
         rewriter.inlineRegionBefore(op.getThenRegion(), newIf.getThenRegion(), newIf.getThenRegion().end());
 
