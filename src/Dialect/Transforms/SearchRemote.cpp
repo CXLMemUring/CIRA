@@ -24,7 +24,7 @@
 namespace mlir {
 #define GEN_PASS_DEF_RMEMSEARCHREMOTE
 #include "Dialect/Transforms/Passes.h.inc"
-}
+} // namespace mlir
 
 using namespace mlir;
 
@@ -52,11 +52,11 @@ class RMEMSearchRemotePass : public impl::RMEMSearchRemoteBase<RMEMSearchRemoteP
 
     llvm::SetVector<mlir::Value> analyzeValueUses(mlir::scf::ForOp forOp) {
         llvm::SetVector<mlir::Value> capturedValues;
-        mlir::Region& loopBody = forOp.getRegion();
+        mlir::Region &loopBody = forOp.getRegion();
 
         forOp.walk([&](mlir::Operation *op) {
             for (mlir::Value operand : op->getOperands()) {
-                mlir::Operation* definingOp = operand.getDefiningOp();
+                mlir::Operation *definingOp = operand.getDefiningOp();
 
                 // Check if the operand is defined outside the loop
                 // and is not a result of an operation within the loop
@@ -75,20 +75,21 @@ class RMEMSearchRemotePass : public impl::RMEMSearchRemoteBase<RMEMSearchRemoteP
 
         return capturedValues;
     }
-
-    mlir::func::FuncOp extractLoopBody(mlir::scf::ForOp forOp, const llvm::SetVector<mlir::Value> &capturedValues,
+    mlir::func::FuncOp extractLoopBody(mlir::scf::ForOp forOp,
+                                       const llvm::SetVector<mlir::Value>& capturedValues,
                                        mlir::OpBuilder &builder) {
         mlir::Block *body = forOp.getBody();
 
         // Prepare function type
         llvm::SmallVector<mlir::Type, 4> argTypes;
-        argTypes.push_back(forOp.getInductionVar().getType()); // Induction variable
+        argTypes.push_back(builder.getIndexType()); // Induction variable
         for (mlir::Value val : capturedValues) {
             argTypes.push_back(val.getType());
         }
         auto funcType = builder.getFunctionType(argTypes, {});
 
-        auto remoteFunc = builder.create<mlir::func::FuncOp>(forOp.getLoc(), "remote_loop_body", funcType);
+        auto remoteFunc = builder.create<mlir::func::FuncOp>(
+            forOp.getLoc(), "remote_loop_body", funcType);
 
         auto remoteBlock = remoteFunc.addEntryBlock();
         builder.setInsertionPointToStart(remoteBlock);
@@ -111,39 +112,54 @@ class RMEMSearchRemotePass : public impl::RMEMSearchRemoteBase<RMEMSearchRemoteP
         return remoteFunc;
     }
 
-    void replaceWithRemoteCall(mlir::scf::ForOp forOp, mlir::func::FuncOp remoteFunc,
-                               const llvm::SetVector<mlir::Value> &capturedValues, mlir::OpBuilder &builder) {
+    void replaceWithRemoteCall(mlir::scf::ForOp forOp,
+                               mlir::func::FuncOp remoteFunc,
+                               const llvm::SetVector<mlir::Value>& capturedValues,
+                               mlir::OpBuilder &builder) {
         builder.setInsertionPoint(forOp);
 
+        auto newForOp = builder.create<mlir::scf::ForOp>(
+            forOp.getLoc(),
+            forOp.getLowerBound(),
+            forOp.getUpperBound(),
+            forOp.getStep(),
+            llvm::None // No initial values
+        );
+
+        builder.setInsertionPointToStart(newForOp.getBody());
+
         llvm::SmallVector<mlir::Value, 4> callOperands;
-        callOperands.push_back(forOp.getInductionVar());
+        callOperands.push_back(newForOp.getInductionVar());
         callOperands.append(capturedValues.begin(), capturedValues.end());
 
-        auto call = builder.create<mlir::func::CallOp>(forOp.getLoc(), remoteFunc, callOperands);
-        //  forOp.erase();
+        builder.create<mlir::func::CallOp>(forOp.getLoc(), remoteFunc, callOperands);
+
+        forOp.erase();
     }
     void runOnOperation() override {
         ModuleOp mop = getOperation();
+
         mlir::OpBuilder builder(mop.getContext());
-        WorkloadComplexityAnalyzer analyzer{};
-        auto dfsComplexity = [&](const std::set<Operation *> &dfs) {
-            unsigned c = 0;
-            for (auto const &op : dfs) {
-                c += analyzer.visitOperation(op);
-                if (c >= WorkloadComplexityAnalyzer::uncertain)
-                    return WorkloadComplexityAnalyzer::uncertain;
-            }
-            return c;
-        };
+
+        llvm::SmallVector<mlir::scf::ForOp, 4> forOpsToReplace;
         mop.walk([&](mlir::scf::ForOp forOp) {
-            if (dfsComplexity(addrPathDFS(forOp, forOp)) < 100) {
-                llvm::SetVector<mlir::Value> capturedValues = analyzeValueUses(forOp);
-                mlir::func::FuncOp remoteFunc = extractLoopBody(forOp, capturedValues, builder);
-                replaceWithRemoteCall(forOp, remoteFunc, capturedValues, builder);
-            }
+            //            if (isComplexEnough(forOp)) {
+            forOpsToReplace.push_back(forOp);
+            //            }
         });
+
+        for (auto forOp : forOpsToReplace) {
+            llvm::SetVector<mlir::Value> capturedValues = analyzeValueUses(forOp);
+            mlir::func::FuncOp remoteFunc = extractLoopBody(forOp, capturedValues, builder);
+
+            // Add the new function to the module
+            mop.push_back(remoteFunc);
+
+            replaceWithRemoteCall(forOp, remoteFunc, capturedValues, builder);
+        }
     }
 };
+
 } // namespace
 
 std::unique_ptr<Pass> mlir::createRemoteMemSearchRemotePass() { return std::make_unique<RMEMSearchRemotePass>(); }

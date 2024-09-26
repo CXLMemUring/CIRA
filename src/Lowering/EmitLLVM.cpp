@@ -1,29 +1,29 @@
+#include "Dialect/FunctionUtils.h"
+#include "Dialect/RemoteMem.h"
+#include "mlir/Analysis/DataLayoutAnalysis.h"
+#include "mlir/Conversion/LLVMCommon/Pattern.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Arith/Transforms/Passes.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
+#include "mlir/Dialect/Math/Transforms/Passes.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/MemRef/Transforms/Passes.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/Dialect/Vector/IR/VectorOps.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/Pass/Pass.h"
-#include "Dialect/RemoteMem.h"
-#include "Dialect/FunctionUtils.h"
+#include "mlir/Transforms/DialectConversion.h"
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/IR/DataLayout.h"
-#include "mlir/Dialect/MemRef/IR/MemRef.h"
-#include "mlir/Dialect/MemRef/Transforms/Passes.h"
-#include "mlir/Dialect/Math/Transforms/Passes.h"
-#include "mlir/Dialect/Arith/Transforms/Passes.h"
-#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
-#include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/Dialect/SCF/IR/SCF.h"
-#include "mlir/Dialect/Arith/IR/Arith.h"
-#include "mlir/Dialect/Vector/IR/VectorOps.h"
-#include "mlir/Conversion/LLVMCommon/Pattern.h"
-#include "mlir/Transforms/DialectConversion.h"
-#include "mlir/Analysis/DataLayoutAnalysis.h"
-//#include "Lowering/Common/PatternBase.h"
-//#include "Lowering/Common/RMemTypeLowerer.h"
-//#include "Lowering/RemoteMemToLLVM/RemoteMemToLLVM.h"
-//#include "Lowering/FuncRemote/FuncRemote.h"
-//#include "Lowering/SCFRemote/SCFRemote.h"
-//#include "Lowering/MemRefRemote/MemRefRemote.h"
-//#include "Lowering/Trivial/Trivial.h"
+// #include "Lowering/Common/PatternBase.h"
+// #include "Lowering/Common/RMemTypeLowerer.h"
+// #include "Lowering/RemoteMemToLLVM/RemoteMemToLLVM.h"
+// #include "Lowering/FuncRemote/FuncRemote.h"
+// #include "Lowering/SCFRemote/SCFRemote.h"
+// #include "Lowering/MemRefRemote/MemRefRemote.h"
+// #include "Lowering/Trivial/Trivial.h"
 #include "Lowering/EmitLLVM.h"
 
 #include "mlir/Conversion/AffineToStandard/AffineToStandard.h"
@@ -42,7 +42,7 @@
 namespace mlir {
 #define GEN_PASS_DEF_EMITLLVM
 #include "Lowering/Passes.h.inc"
-//using namespace mlir::rmem;
+// using namespace mlir::rmem;
 
 namespace {
 class EmitLLVMPass : public impl::EmitLLVMBase<EmitLLVMPass> {
@@ -56,7 +56,7 @@ public:
 
         LLVMTypeConverter llvmTypeConverter(&getContext(), options);
         RewritePatternSet patterns(&getContext());
-        mlir::populateEmitLLVMPatterns( llvmTypeConverter, patterns);
+        mlir::populateEmitLLVMPatterns(llvmTypeConverter, patterns);
 
         ConversionTarget target(getContext());
         target.addLegalDialect<LLVM::LLVMDialect>();
@@ -65,10 +65,12 @@ public:
         target.addIllegalDialect<cira::RemoteMemDialect>();
         // Generic target that fileter out most of operations
         // target.markUnknownOpDynamicallyLegal([](Operation *op) {
-        //   return !(llvm::any_of(op->getOperandTypes(), rmem::hasRemoteTarget) || llvm::any_of(op->getResultTypes(), rmem::hasRemoteTarget));
+        //   return !(llvm::any_of(op->getOperandTypes(), rmem::hasRemoteTarget) || llvm::any_of(op->getResultTypes(),
+        //   rmem::hasRemoteTarget));
         // });
         // target.addDynamicallyLegalOp<func::FuncOp>([](func::FuncOp op) {
-        //   return (!llvm::any_of(op.getArgumentTypes(), rmem::hasRemoteTarget)) && (!llvm::any_of(op.getResultTypes(), rmem::hasRemoteTarget));
+        //   return (!llvm::any_of(op.getArgumentTypes(), rmem::hasRemoteTarget)) && (!llvm::any_of(op.getResultTypes(),
+        //   rmem::hasRemoteTarget));
         // });
 
         if (failed(applyFullConversion(m, target, std::move(patterns))))
@@ -92,41 +94,35 @@ public:
 
 } // namespace
 
-void populateEmitLLVMPatterns( LLVMTypeConverter &llvmTypeConverter, RewritePatternSet &patterns) {
-//    populateLowerFuncRMemPatterns(rmemTypeConverter, patterns);
-//    populateLowerSCFRMemPatterns(rmemTypeConverter, patterns);
-//    populateLowerMemRefRMemPatterns(rmemTypeConverter, patterns, pools);
-//    populateLowerArithRMemPatterns(rmemTypeConverter, patterns);
-//    populateRemoteMemToLLVMPatterns(rmemTypeConverter, patterns, pools, caches);
-//
-//    vector::populateVectorToVectorCanonicalizationPatterns(patterns);
-//    vector::populateVectorBroadcastLoweringPatterns(patterns);
-//    // vector::populateVectorContractLoweringPatterns(patterns);
-//    // vector::populateVectorTransposeLoweringPatterns(patterns);
-//
-//    populateAffineToStdConversionPatterns(patterns);
-//    populateSCFToControlFlowConversionPatterns(patterns);
-//
-//    populateShapeToStandardConversionPatterns(patterns);
-//    populateVectorToLLVMMatrixConversionPatterns(llvmTypeConverter, patterns);
-//    populateVectorToLLVMConversionPatterns(llvmTypeConverter, patterns);
-//    populateVectorToLLVMMatrixConversionPatterns(llvmTypeConverter, patterns);
-//    memref::populateExpandOpsPatterns(patterns);
-//    // Use polynomial approximation for math.{tanh, sin, cos and exp} for better
-//    // performance.
-//    populateMathPolynomialApproximationPatterns(patterns);
-//    arith::populateArithExpandOpsPatterns(patterns);
-//    populateMathToLLVMConversionPatterns(llvmTypeConverter, patterns);
-//    populateFuncToLLVMConversionPatterns(llvmTypeConverter, patterns);
-//    populateMemRefToLLVMConversionPatterns(llvmTypeConverter, patterns);
-//    // populateFinalizeMemRefToLLVMConversionPatterns(llvmTypeConverter, patterns);
-//    arith::populateArithToLLVMConversionPatterns(llvmTypeConverter, patterns);
-//    cf::populateControlFlowToLLVMConversionPatterns(llvmTypeConverter, patterns);
-//
-//    populateReconcileUnrealizedCastsPatterns(patterns);
+void populateEmitLLVMPatterns(LLVMTypeConverter &llvmTypeConverter, RewritePatternSet &patterns) {
+    populateRemoteMemToLLVMPatterns(patterns);
+
+    vector::populateVectorToVectorCanonicalizationPatterns(patterns);
+    vector::populateVectorBroadcastLoweringPatterns(patterns);
+    // vector::populateVectorContractLoweringPatterns(patterns);
+    // vector::populateVectorTransposeLoweringPatterns(patterns);
+
+    populateAffineToStdConversionPatterns(patterns);
+    populateSCFToControlFlowConversionPatterns(patterns);
+
+    populateShapeToStandardConversionPatterns(patterns);
+    populateVectorToLLVMMatrixConversionPatterns(llvmTypeConverter, patterns);
+    populateVectorToLLVMConversionPatterns(llvmTypeConverter, patterns);
+    populateVectorToLLVMMatrixConversionPatterns(llvmTypeConverter, patterns);
+    memref::populateExpandOpsPatterns(patterns);
+    // Use polynomial approximation for math.{tanh, sin, cos and exp} for better
+    // performance.
+    populateMathPolynomialApproximationPatterns(patterns);
+    arith::populateArithExpandOpsPatterns(patterns);
+    populateMathToLLVMConversionPatterns(llvmTypeConverter, patterns);
+    populateFuncToLLVMConversionPatterns(llvmTypeConverter, patterns);
+    populateMemRefToLLVMConversionPatterns(llvmTypeConverter, patterns);
+    // populateFinalizeMemRefToLLVMConversionPatterns(llvmTypeConverter, patterns);
+    arith::populateArithToLLVMConversionPatterns(llvmTypeConverter, patterns);
+    cf::populateControlFlowToLLVMConversionPatterns(llvmTypeConverter, patterns);
+
+    populateReconcileUnrealizedCastsPatterns(patterns);
 }
 
-std::unique_ptr<Pass> createEmitLLVMPass() {
-    return std::make_unique<EmitLLVMPass>();
-}
-}
+std::unique_ptr<Pass> createEmitLLVMPass() { return std::make_unique<EmitLLVMPass>(); }
+} // namespace mlir
