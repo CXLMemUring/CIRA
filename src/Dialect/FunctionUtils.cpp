@@ -11,16 +11,52 @@
 using namespace mlir;
 using namespace mlir::cira;
 
-static constexpr llvm::StringRef kRemoteAccess = "remote_access_%s";
+static const char * kRemoteAccess = "remote_access_%s";
 static int kRemoteAccessNum = 0;
 static constexpr llvm::StringRef kInstrProfInc = "llvm.instrprof.increment";
 static constexpr llvm::StringRef kInstrProfIncStep = "llvm.instrprof.increment.step";
 static constexpr llvm::StringRef kDumpProfile = "__llvm_profile_write_file";
 
-std::string getNextRemoteAccessName() {
+Value mlir::cira::createIntConstant(OpBuilder &builder, Location loc, int64_t value, Type resultType) {
+    return builder.create<LLVM::ConstantOp>(
+        loc, resultType, builder.getIntegerAttr(resultType, value)
+    );
+}
+
+// llvm.mlir.global external @tokens() {addr_space = 0 : i32} : !llvm.array<33554432 x struct<"struct.Token", (i64, i8, i8, i16, i32)>>
+LLVM::LLVMStructType mlir::cira::getStructTokenType(MLIRContext *ctx) {
+    /*
+    typedef struct cache_token_t {
+      uint64_t tag;
+      uint8_t flags;
+      uint8_t pad0;
+      uint16_t seq;
+      pthread_spinlock_t lock;
+    } cache_token_t;
+    */
+    return LLVM::LLVMStructType::getLiteral(ctx,
+                                            {
+                                                getIntBitType(ctx, 64),
+                                                getIntBitType(ctx, 8),
+                                                getIntBitType(ctx, 8),
+                                                getIntBitType(ctx, 16),
+                                                getIntBitType(ctx, 32),
+                                            }
+    );
+}
+
+LLVM::LLVMVoidType mlir::cira::getVoidType(MLIRContext *ctx) {
+    return LLVM::LLVMVoidType::get(ctx);
+}
+
+LLVM::LLVMPointerType mlir::cira::getVoidPtrType(MLIRContext *ctx) {
+    return LLVM::LLVMPointerType::get(getIntBitType(ctx, 8));
+}
+
+llvm::StringRef getNextRemoteAccessName() {
     char buffer[50];  // Adjust size as needed
     std::snprintf(buffer, sizeof(buffer), kRemoteAccess, kRemoteAccessNum++);
-    return std::string(buffer);
+    return llvm::StringRef(buffer);
 }
 LLVM::LLVMFuncOp mlir::cira::lookupOrCreatRemoteAccess(ModuleOp moduleOp) {
     auto ctx = moduleOp.getContext();

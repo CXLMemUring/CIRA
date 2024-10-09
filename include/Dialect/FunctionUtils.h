@@ -7,6 +7,7 @@
 
 #include "mlir/IR/Operation.h"
 #include "mlir/Support/LLVM.h"
+
 namespace mlir {
 class Location;
 class ModuleOp;
@@ -18,28 +19,17 @@ class ValueRange;
 
 namespace LLVM {
 class LLVMFuncOp;
+class LLVMVoidType;
+class LLVMPointerType;
+class LLVMStructType;
 }
 
 namespace cira {
 Type getIntBitType(MLIRContext *ctx, unsigned bitwidth);
 Value createIntConstant(OpBuilder &builder, Location loc, int64_t value, Type resultType);
-LLVM::LLVMStructType getCacheTokenType(MLIRContext *ctx);
-LLVM::LLVMVoidType getVoidType(MLIRContext *ctx);
+LLVM::LLVMStructType getStructTokenType(MLIRContext *ctx);
+LLVM::LLVMVoidType getVoidType(MLIRContext*);
 LLVM::LLVMPointerType getVoidPtrType(MLIRContext *ctx);
-bool isCacheAccessOp(const StringRef calless);
-
-// get rdma send/recv buf
-LLVM::GlobalOp getOrCreateSbuf(ModuleOp moduleOp);
-LLVM::GlobalOp getOrCreateRbuf(ModuleOp moduleOp);
-LLVM::GlobalOp getOrCreateTokens(ModuleOp moduleOp);
-
-// get offload return buf
-LLVM::GlobalOp getOrCreateOffloadArgBuf(ModuleOp moduleOp);
-LLVM::GlobalOp getOrCreateOffloadRetBuf(ModuleOp moduleOp);
-
-// get global wrid counter
-LLVM::GlobalOp getOrCreateWRID(ModuleOp moduleOp);
-
 // calcualte sizeof(elemType) * arraySize in bytes
 // not considering
 Value calculateBufferSize(OpBuilder &builder, Location loc, Type elemType, Value arraySize);

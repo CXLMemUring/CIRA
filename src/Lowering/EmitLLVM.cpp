@@ -17,13 +17,6 @@
 #include "mlir/Transforms/DialectConversion.h"
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/IR/DataLayout.h"
-// #include "Lowering/Common/PatternBase.h"
-// #include "Lowering/Common/RMemTypeLowerer.h"
-// #include "Lowering/RemoteMemToLLVM/RemoteMemToLLVM.h"
-// #include "Lowering/FuncRemote/FuncRemote.h"
-// #include "Lowering/SCFRemote/SCFRemote.h"
-// #include "Lowering/MemRefRemote/MemRefRemote.h"
-// #include "Lowering/Trivial/Trivial.h"
 #include "Lowering/EmitLLVM.h"
 
 #include "mlir/Conversion/AffineToStandard/AffineToStandard.h"
@@ -42,7 +35,7 @@
 namespace mlir {
 #define GEN_PASS_DEF_EMITLLVM
 #include "Lowering/Passes.h.inc"
-// using namespace mlir::rmem;
+ using namespace mlir::cira;
 
 namespace {
 class EmitLLVMPass : public impl::EmitLLVMBase<EmitLLVMPass> {
@@ -95,10 +88,10 @@ public:
 } // namespace
 
 void populateEmitLLVMPatterns(LLVMTypeConverter &llvmTypeConverter, RewritePatternSet &patterns) {
-    populateRemoteMemToLLVMPatterns(patterns);
+//    populateRemoteMemToLLVMPatterns(patterns);
 
     vector::populateVectorToVectorCanonicalizationPatterns(patterns);
-    vector::populateVectorBroadcastLoweringPatterns(patterns);
+//    vector::populateVectorBroadcastLoweringPatterns(patterns);
     // vector::populateVectorContractLoweringPatterns(patterns);
     // vector::populateVectorTransposeLoweringPatterns(patterns);
 
@@ -109,14 +102,14 @@ void populateEmitLLVMPatterns(LLVMTypeConverter &llvmTypeConverter, RewritePatte
     populateVectorToLLVMMatrixConversionPatterns(llvmTypeConverter, patterns);
     populateVectorToLLVMConversionPatterns(llvmTypeConverter, patterns);
     populateVectorToLLVMMatrixConversionPatterns(llvmTypeConverter, patterns);
-    memref::populateExpandOpsPatterns(patterns);
+//    memref::populateExpandOpsPatterns(patterns);
     // Use polynomial approximation for math.{tanh, sin, cos and exp} for better
     // performance.
     populateMathPolynomialApproximationPatterns(patterns);
     arith::populateArithExpandOpsPatterns(patterns);
     populateMathToLLVMConversionPatterns(llvmTypeConverter, patterns);
     populateFuncToLLVMConversionPatterns(llvmTypeConverter, patterns);
-    populateMemRefToLLVMConversionPatterns(llvmTypeConverter, patterns);
+    populateVectorToLLVMConversionPatterns(llvmTypeConverter, patterns);
     // populateFinalizeMemRefToLLVMConversionPatterns(llvmTypeConverter, patterns);
     arith::populateArithToLLVMConversionPatterns(llvmTypeConverter, patterns);
     cf::populateControlFlowToLLVMConversionPatterns(llvmTypeConverter, patterns);

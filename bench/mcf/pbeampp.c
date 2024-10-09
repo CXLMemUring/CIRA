@@ -162,18 +162,18 @@ NEXT:
     arc = arcs + group_pos;
     for( ; arc < stop_arcs; arc += nr_group )
     {
-        // if( arc->ident > BASIC )
-        // {
-        //     /* red_cost = bea_compute_red_cost( arc ); */
-        //     red_cost = arc->cost - arc->tail->potential + arc->head->potential;
-        //     if( bea_is_dual_infeasible( arc, red_cost ) )
-        //     {
-        //         basket_size++;
-        //         perm[basket_size]->a = arc;
-        //         perm[basket_size]->cost = red_cost;
-        //         perm[basket_size]->abs_cost = ABS(red_cost);
-        //     }
-        // }
+            // if( arc->ident > BASIC )
+            // {
+            //     /* red_cost = bea_compute_red_cost( arc ); */
+            //     red_cost = arc->cost - arc->tail->potential + arc->head->potential;
+            //     if( bea_is_dual_infeasible( arc, red_cost ) )
+            //     {
+            //         basket_size++;
+            //         perm[basket_size]->a = arc;
+            //         perm[basket_size]->cost = red_cost;
+            //         perm[basket_size]->abs_cost = ABS(red_cost);
+            //     }
+            // }
         remote(arc, &basket_size, perm);
         
     }

@@ -22,32 +22,31 @@
 using namespace mlir;
 using namespace mlir::cira;
 
-#include "Dialect/RemoteMem.cpp.inc"
-bool RemoteMemRefType::isValidElementType(Type elementType) {
-    if (!elementType) return false;
-    if (!elementType.isa<mlir::MemRefType, mlir::LLVM::LLVMPointerType, mlir::UnrankedMemRefType>()) return false;
-    return true;
-}
-LogicalResult RemoteMemRefType::verify(function_ref<InFlightDiagnostic()> emitError, Type elementType, unsigned canRemote) {
-    if (!RemoteMemRefType::isValidElementType(elementType))
-        return emitError() << "invalid pointer elementType: " << elementType;
-    return success();
-}
+//bool RemoteMemRefType::isValidElementType(Type elementType) {
+//    if (!elementType) return false;
+//    if (!elementType.isa<mlir::MemRefType, mlir::LLVM::LLVMPointerType, mlir::UnrankedMemRefType>()) return false;
+//    return true;
+//}
+//LogicalResult RemoteMemRefType::verify(function_ref<InFlightDiagnostic()> emitError, Type elementType, unsigned canRemote) {
+//    if (!RemoteMemRefType::isValidElementType(elementType))
+//        return emitError() << "invalid pointer elementType: " << elementType;
+//    return success();
+//}
 ::mlir::Attribute RemoteMemDialect::parseAttribute(mlir::DialectAsmParser&, mlir::Type) const{}
 void RemoteMemDialect::printAttribute(mlir::Attribute, mlir::DialectAsmPrinter&) const{}
 void RemoteMemDialect::initialize() {
-//    registerTypes();
+    registerTypes();
     addOperations<
 #define GET_OP_LIST
 #include "Dialect/RemoteMemRef.cpp.inc"
         >();
 }
-//void RemoteMemDialect::registerTypes() {
-//    addTypes<
-//#define GET_TYPEDEF_LIST
-//#include "Dialect/RemoteMem.cpp.inc"
-//        >();
-//}
+void RemoteMemDialect::registerTypes() {
+    addTypes<
+#define GET_TYPEDEF_LIST
+#include "Dialect/RemoteMem.cpp.inc"
+        >();
+}
 
 #define GET_TYPEDEF_CLASSES
 #include "Dialect/RemoteMemRef.cpp.inc"

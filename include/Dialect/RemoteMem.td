@@ -8,8 +8,8 @@ include "mlir/IR/AttrTypeBase.td"
 include "mlir/IR/BuiltinDialect.td"
 include "mlir/IR/BuiltinTypeInterfaces.td"
 include "mlir/Dialect/LLVMIR/LLVMOpBase.td"
-// include "mlir/Dialect/LLVMIR/LLVMInterfaces.td"
 
+// basic block top to remote memory
 def RemoteMem_Dialect : Dialect {
   let name = "cira";
   let cppNamespace = "::mlir::cira";
@@ -24,7 +24,8 @@ def RemoteMem_Dialect : Dialect {
   let useDefaultAttributePrinterParser = 1;
   let useDefaultTypePrinterParser = 1;
 }
-// basic block top to remote memory
+class RemoteMem_Op<string mnemonic, list<Trait> traits = []>:
+  Op<RemoteMem_Dialect, mnemonic, traits>;
 
 /* RemoteMemRef Type Definitions */
 def IsRemoteMemRefTypePred : CPred<"$_self.isa<::mlir::cira::RemoteMemRefType>()">;
@@ -49,30 +50,12 @@ class Detail_RemoteMemType<string name, string typeMnemonic, list<Trait> traits 
     let mnemonic = typeMnemonic;
 }
 
-def Detail_RemoteMemRefType: Detail_RemoteMemType<"RemoteMemRef", "rmref", [
-  /* Add following interfaces so that remote memref can be the member of llvm.ptr and memref */
-  DeclareTypeInterfaceMethods<LLVM_PointerElementTypeInterface>,
-  DeclareTypeInterfaceMethods<MemRefElementTypeInterface>
-]> {
-  let summary = "Remote MemRef Type";
-  let parameters = (ins "Type":$elementType,
-    "unsigned":$canRemote);
-  let genVerifyDecl = 1;
-  let assemblyFormat = "`<` $canRemote`,` $elementType `>`";
-  // let hasCustomAssemblyFormat = 1;
-  let builders = [
-    TypeBuilderWithInferredContext<(ins "Type":$elementType,
-      CArg<"unsigned", "1">:$canRemote), [{
-      return Base::get(elementType.getContext(), elementType, canRemote);
-    }]>
-  ];
-  let extraClassDeclaration = [{
-    static bool isValidElementType(Type elementType);
-    Type getRawSourceType();
-    Type getInnerElementType();
+def RemoteMem_OffloadOp : RemoteMem_Op<"offload"> {
+  let summary = "Offload current function call to remote server";
+  let arguments = (ins I32: $fid, Variadic<AnyType>: $inputs);
+  let results = (outs Variadic<AnyType>: $ret);
+  let assemblyFormat = [{
+    operands attr-dict `:` functional-type(operands, results)
   }];
-
 }
-
-
 #endif
