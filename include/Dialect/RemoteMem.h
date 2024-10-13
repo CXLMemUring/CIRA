@@ -31,6 +31,9 @@
 #include "llvm/Support/PointerLikeTypeTraits.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "Conversion/CIRA.h"
+#include "Dialect/RemoteMemTypeLower.h"
+
 namespace mlir {
 class Value;
 class Type;
@@ -177,7 +180,5 @@ private:
 #include "Dialect/RemoteMem.h.inc"
 #define GET_TYPEDEF_CLASSES
 #include "Dialect/RemoteMemDialect.h.inc"
-#include "Dialect/RemoteMemEnums.h.inc"
-#include "Dialect/RemoteMemRef.h.inc"
 
 #endif // CIRA_REMOTEMEM_H

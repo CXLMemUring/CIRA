@@ -30,10 +30,10 @@ Value createIntConstant(OpBuilder &builder, Location loc, int64_t value, Type re
 LLVM::LLVMStructType getStructTokenType(MLIRContext *ctx);
 LLVM::LLVMVoidType getVoidType(MLIRContext*);
 LLVM::LLVMPointerType getVoidPtrType(MLIRContext *ctx);
+llvm::StringRef getNextRemoteAccessName();
 // calcualte sizeof(elemType) * arraySize in bytes
 // not considering
 Value calculateBufferSize(OpBuilder &builder, Location loc, Type elemType, Value arraySize);
-
 LLVM::LLVMFuncOp lookupOrCreateRawMallocFn(ModuleOp moduleOp);
 LLVM::LLVMFuncOp lookupOrCreateRawCallocFn(ModuleOp moduleOp);
 

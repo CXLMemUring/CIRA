@@ -4,6 +4,7 @@
 #include "Dialect/RemoteMem.h"
 #include "Dialect/Transforms/Passes.h"
 #include "Dialect/WorkloadAnalysis.h"
+#include "Dialect/FunctionUtils.h"
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
@@ -88,8 +89,7 @@ class RMEMSearchRemotePass : public impl::RMEMSearchRemoteBase<RMEMSearchRemoteP
         }
         auto funcType = builder.getFunctionType(argTypes, {});
 
-        auto remoteFunc = builder.create<mlir::func::FuncOp>(
-            forOp.getLoc(), "remote_loop_body", funcType);
+        auto remoteFunc = builder.create<cira::OffloadOp>(forOp.getLoc(), mlir::cira::getNextRemoteAccessName(), funcType);
 
         auto remoteBlock = remoteFunc.addEntryBlock();
         builder.setInsertionPointToStart(remoteBlock);
@@ -122,8 +122,7 @@ class RMEMSearchRemotePass : public impl::RMEMSearchRemoteBase<RMEMSearchRemoteP
             forOp.getLoc(),
             forOp.getLowerBound(),
             forOp.getUpperBound(),
-            forOp.getStep(),
-            llvm::None // No initial values
+            forOp.getStep()
         );
 
         builder.setInsertionPointToStart(newForOp.getBody());

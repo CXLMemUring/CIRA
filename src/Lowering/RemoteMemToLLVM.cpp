@@ -96,14 +96,14 @@ public:
 //        std::unordered_map<int, mlir::cira::Cache *> caches;
 //        mlir::cira::readCachesFromFile(caches, cfgPath);
 
-//        RemoteMemTypeLowerer typeConverter(&getContext());
-//        RewritePatternSet patterns(&getContext());
+        RemoteMemTypeLowerer typeConverter(&getContext());
+        RewritePatternSet patterns(&getContext());
 //        populateRemoteMemToLLVMPatterns(patterns);
 
         ConversionTarget target(getContext());
         target.addLegalDialect<LLVM::LLVMDialect>();
         target.markUnknownOpDynamicallyLegal([](Operation *op) { return true; });
-        target.addIllegalOp<cira::functio>();
+//        target.addIllegalOp<cira::function>();
         if (failed(applyPartialConversion(m, target, std::move(patterns))))
             signalPassFailure();
     }

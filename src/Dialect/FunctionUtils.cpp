@@ -22,7 +22,6 @@ Value mlir::cira::createIntConstant(OpBuilder &builder, Location loc, int64_t va
         loc, resultType, builder.getIntegerAttr(resultType, value)
     );
 }
-
 // llvm.mlir.global external @tokens() {addr_space = 0 : i32} : !llvm.array<33554432 x struct<"struct.Token", (i64, i8, i8, i16, i32)>>
 LLVM::LLVMStructType mlir::cira::getStructTokenType(MLIRContext *ctx) {
     /*
